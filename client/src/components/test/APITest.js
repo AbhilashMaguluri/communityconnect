@@ -7,20 +7,25 @@ const APITest = () => {
   const [issuesCount, setIssuesCount] = useState(0);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    testAPIConnection();
-  }, []);
-
-  const testAPIConnection = async () => {
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  
+  const testAPIConnection = React.useCallback(async () => {
     try {
-      console.log('Testing API connection...');
-      
-      // Test 1: Basic health check
-      const healthResponse = await axios.get('http://localhost:5000/api/issues');
+      console.log('Testing API connection to:', API_URL);
+      // Use environment variable for API URL
+      const healthResponse = await axios.get(`${API_URL}/api/issues`);
       console.log('API Response:', healthResponse.data);
-      
       if (healthResponse.data) {
-        setIssuesCount(healthResponse.data.length || 0);
+        // Support both array and nested issue collections
+        const payload = healthResponse.data;
+        const issuesArray = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.data?.issues)
+            ? payload.data.issues
+            : Array.isArray(payload.data)
+              ? payload.data
+              : [];
+        setIssuesCount(issuesArray.length);
         setApiStatus('connected');
       }
     } catch (err) {
@@ -28,7 +33,11 @@ const APITest = () => {
       setError(`API Connection Failed: ${err.message}`);
       setApiStatus('failed');
     }
-  };
+  }, [API_URL]);
+
+  useEffect(() => {
+    testAPIConnection();
+  }, [testAPIConnection]);
 
   return (
     <div className="container mt-5">

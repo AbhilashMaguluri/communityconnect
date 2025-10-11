@@ -4,7 +4,7 @@
   "description": "Community Connect - Report and manage local issues",
   "scripts": {
     "install-client": "cd client && npm install",
-    "install-server": "cd server && npm install", 
+    "install-server": "cd server && npm install",
     "install-all": "npm run install-server && npm run install-client",
     "build": "cd client && npm run build",
     "start": "cd server && npm start",
@@ -18,5 +18,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.12.2"
   }
 }
