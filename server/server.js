@@ -14,15 +14,17 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB (with fallback to demo mode)
+connectDB().catch(() => {
+  console.log('🎯 Database connection failed, continuing in demo mode...');
+});
 
 // Middleware
 app.use(helmet()); // Security headers
 app.use(morgan('combined')); // Logging
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['your-frontend-domain.com'] 
+    ? true // Allow all origins in production for now
     : ['http://localhost:3000', 'http://localhost:8080'],
   credentials: true
 }));

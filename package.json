@@ -1,0 +1,22 @@
+{
+  "name": "community-connect",
+  "version": "1.0.0",
+  "description": "Community Connect - Report and manage local issues",
+  "scripts": {
+    "install-client": "cd client && npm install",
+    "install-server": "cd server && npm install", 
+    "install-all": "npm run install-server && npm run install-client",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "dev-server": "cd server && npm run dev",
+    "dev-client": "cd client && npm start",
+    "render-build": "npm run install-all && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MaguluriAbhilash/communityconnect.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
