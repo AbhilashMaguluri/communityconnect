@@ -283,52 +283,91 @@ const ReportIssue = () => {
     setUploadProgress(0);
 
     try {
-      // Create FormData for file upload
-      const submitData = new FormData();
+      console.log('Submitting issue with data:', formData);
 
-      // Add form fields
-      submitData.append('title', formData.title.trim());
-      submitData.append('description', formData.description.trim());
-      submitData.append('category', formData.category);
-      submitData.append('priority', formData.priority);
-      
-      // Location data
-      submitData.append('location[type]', formData.location.type);
-      submitData.append('location[coordinates][0]', formData.location.coordinates[0]);
-      submitData.append('location[coordinates][1]', formData.location.coordinates[1]);
-      
-      // Address data
-      Object.keys(formData.address).forEach(key => {
-        if (formData.address[key]) {
-          submitData.append(`address[${key}]`, formData.address[key]);
+      // Try FormData first for file uploads
+      if (selectedFiles.length > 0) {
+        // Create FormData for file upload
+        const submitData = new FormData();
+
+        // Add form fields
+        submitData.append('title', formData.title.trim());
+        submitData.append('description', formData.description.trim());
+        submitData.append('category', formData.category);
+        submitData.append('priority', formData.priority);
+        
+        // Location data
+        submitData.append('location[type]', formData.location.type);
+        submitData.append('location[coordinates][0]', formData.location.coordinates[0]);
+        submitData.append('location[coordinates][1]', formData.location.coordinates[1]);
+        
+        // Address data
+        Object.keys(formData.address).forEach(key => {
+          if (formData.address[key]) {
+            submitData.append(`address[${key}]`, formData.address[key]);
+          }
+        });
+
+        // Tags
+        if (formData.tags.trim()) {
+          submitData.append('tags', formData.tags.trim());
         }
-      });
 
-      // Tags
-      if (formData.tags.trim()) {
-        submitData.append('tags', formData.tags.trim());
+        // Add images
+        selectedFiles.forEach((file) => {
+          submitData.append('images', file);
+        });
+
+        // Submit with files
+        setUploadProgress(50);
+        const response = await issueAPI.createIssue(submitData);
+        setUploadProgress(100);
+
+        toast.success('Issue reported successfully!');
+        
+        // Redirect to issue detail or list page
+        setTimeout(() => {
+          navigate(`/issues/${response.data.data._id || response.data.data.id}`);
+        }, 1000);
+
+      } else {
+        // Submit as JSON when no files (fallback for demo mode)
+        const jsonData = {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          category: formData.category,
+          priority: formData.priority,
+          location: formData.location,
+          address: formData.address,
+          tags: formData.tags.trim()
+        };
+
+        setUploadProgress(50);
+        const response = await fetch('http://localhost:5001/api/issues', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(jsonData)
+        });
+
+        const result = await response.json();
+        setUploadProgress(100);
+
+        if (result.success) {
+          toast.success('Issue reported successfully!');
+          setTimeout(() => {
+            navigate(`/issues/${result.data._id || result.data.id}`);
+          }, 1000);
+        } else {
+          throw new Error(result.message || 'Failed to create issue');
+        }
       }
-
-      // Add images
-      selectedFiles.forEach((file) => {
-        submitData.append('images', file);
-      });
-
-      // Submit the form
-      setUploadProgress(50);
-      const response = await issueAPI.createIssue(submitData);
-      setUploadProgress(100);
-
-      toast.success('Issue reported successfully!');
-      
-      // Redirect to issue detail or list page
-      setTimeout(() => {
-        navigate(`/issues/${response.data.data._id}`);
-      }, 1000);
 
     } catch (error) {
       console.error('Submit error:', error);
-      const message = error.response?.data?.message || 'Failed to submit issue';
+      const message = error.response?.data?.message || error.message || 'Failed to submit issue';
       toast.error(message);
     } finally {
       setIsSubmitting(false);

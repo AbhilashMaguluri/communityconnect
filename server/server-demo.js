@@ -1,9 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
 require('dotenv').config();
 
 const app = express();
+
+// Configure multer for demo (in-memory storage)
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Middleware
 app.use(cors());
@@ -12,6 +19,16 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Simple auth middleware for demo
+const demoAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    // In demo mode, we just assume any token is valid
+    req.user = users.find(u => u.email === 'admin@demo.com') || users[0];
+  }
+  next();
+};
 
 // In-memory storage for demo (replace with database in production)
 let users = [
@@ -204,28 +221,72 @@ app.get('/api/issues/:id', (req, res) => {
   }
 });
 
-app.post('/api/issues', (req, res) => {
-  const newIssue = {
-    _id: String(issues.length + 1),
-    ...req.body,
-    votes: { upvotes: 0, downvotes: 0, users: [], userVotes: [] },
-    images: req.files ? req.files.map(f => f.filename) : [],
-    reportedBy: '2', // Demo user
-    comments: [],
-    viewCount: 0,
-    status: 'open',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
-  
-  issues.push(newIssue);
-  
-  res.status(201).json({
-    success: true,
-    data: {
-      issue: newIssue
+app.post('/api/issues', demoAuth, upload.array('images', 5), (req, res) => {
+  try {
+    console.log('Received issue creation request:', {
+      body: req.body,
+      files: req.files ? req.files.length : 0
+    });
+
+    // Parse location coordinates if they come as separate fields
+    let location = req.body.location;
+    if (req.body['location[coordinates][0]'] && req.body['location[coordinates][1]']) {
+      location = {
+        type: 'Point',
+        coordinates: [
+          parseFloat(req.body['location[coordinates][0]']),
+          parseFloat(req.body['location[coordinates][1]'])
+        ]
+      };
     }
-  });
+
+    // Parse address from form fields
+    const address = {};
+    Object.keys(req.body).forEach(key => {
+      if (key.startsWith('address[') && key.endsWith(']')) {
+        const field = key.slice(8, -1); // Extract field name
+        address[field] = req.body[key];
+      }
+    });
+
+    const newIssue = {
+      _id: String(issues.length + 1),
+      title: req.body.title,
+      description: req.body.description,
+      category: req.body.category,
+      priority: req.body.priority || 'medium',
+      location: location,
+      address: address,
+      tags: req.body.tags ? req.body.tags.split(',').map(t => t.trim()) : [],
+      votes: { upvotes: 0, downvotes: 0, users: [], userVotes: [] },
+      images: req.files ? req.files.map(f => ({
+        filename: f.originalname,
+        size: f.size,
+        mimetype: f.mimetype
+      })) : [],
+      reportedBy: '2', // Demo user
+      comments: [],
+      viewCount: 0,
+      status: 'reported',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    issues.push(newIssue);
+    console.log('Created new issue:', newIssue._id);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Issue created successfully',
+      data: newIssue
+    });
+  } catch (error) {
+    console.error('Error creating issue:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create issue: ' + error.message
+    });
+  }
 });
 
 app.post('/api/issues/:id/vote', (req, res) => {
