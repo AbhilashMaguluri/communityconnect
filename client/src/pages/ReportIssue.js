@@ -296,17 +296,9 @@ const ReportIssue = () => {
         submitData.append('category', formData.category);
         submitData.append('priority', formData.priority);
         
-        // Location data
-        submitData.append('location[type]', formData.location.type);
-        submitData.append('location[coordinates][0]', formData.location.coordinates[0]);
-        submitData.append('location[coordinates][1]', formData.location.coordinates[1]);
-        
-        // Address data
-        Object.keys(formData.address).forEach(key => {
-          if (formData.address[key]) {
-            submitData.append(`address[${key}]`, formData.address[key]);
-          }
-        });
+        // Location and address — send as JSON strings so the server can parse them reliably
+        submitData.append('location', JSON.stringify(formData.location));
+        submitData.append('address', JSON.stringify(formData.address));
 
         // Tags
         if (formData.tags.trim()) {
@@ -323,46 +315,47 @@ const ReportIssue = () => {
         const response = await issueAPI.createIssue(submitData);
         setUploadProgress(100);
 
+  // Redirect to issue detail or list page, normalize created issue id
         toast.success('Issue reported successfully!');
-        
-        // Redirect to issue detail or list page
+  const created = response?.data?.issue || response?.data?.data || response?.data || {};
+  const createdId = created._id || created.id || created.issue?._id || created.data?._id || created.data?.id;
         setTimeout(() => {
-          navigate(`/issues/${response.data.data._id || response.data.data.id}`);
+          if (createdId) navigate(`/issues/${createdId}`);
+          else navigate('/issues');
         }, 1000);
 
       } else {
-        // Submit as JSON when no files (fallback for demo mode)
+        // Submit as JSON when no files
         const jsonData = {
           title: formData.title.trim(),
           description: formData.description.trim(),
           category: formData.category,
           priority: formData.priority,
-          location: formData.location,
-          address: formData.address,
+          // Stringify location and address to match FormData behavior and server parsing
+          location: JSON.stringify(formData.location),
+          address: JSON.stringify(formData.address),
           tags: formData.tags.trim()
         };
 
         setUploadProgress(50);
-        const response = await fetch('http://localhost:5001/api/issues', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify(jsonData)
-        });
-
-        const result = await response.json();
+        // Use the centralized API client so baseURL, auth header and error handling are consistent
+        const response = await issueAPI.createIssue(jsonData);
         setUploadProgress(100);
 
-        if (result.success) {
-          toast.success('Issue reported successfully!');
-          setTimeout(() => {
-            navigate(`/issues/${result.data._id || result.data.id}`);
-          }, 1000);
-        } else {
-          throw new Error(result.message || 'Failed to create issue');
-        }
+        toast.success('Issue reported successfully!');
+
+        // Normalize created issue id (different backends might return different shapes)
+        const created = response?.data?.issue || response?.data?.data || response?.data || {};
+        const createdId = created._id || created.id || created.issue?._id || created.data?._id || created.data?.id;
+
+        setTimeout(() => {
+          if (createdId) {
+            navigate(`/issues/${createdId}`);
+          } else {
+            // Fallback to issues list if id isn't returned
+            navigate('/issues');
+          }
+        }, 1000);
       }
 
     } catch (error) {

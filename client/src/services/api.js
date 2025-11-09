@@ -2,10 +2,9 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Create axios instance with base URL
-const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
-  timeout: 10000,
-});
+const API = axios.create({ baseURL: "http://localhost:5000" });
+
+
 
 // Request interceptor to add auth token
 API.interceptors.request.use(
@@ -46,6 +45,8 @@ export const authAPI = {
   register: (data) => API.post('/api/auth/register', data),
   login: (data) => API.post('/api/auth/login', data),
   getProfile: () => API.get('/api/auth/me'),
+  // note: server exposes /api/auth/check for session validation
+  getProfile: () => API.get('/api/auth/check'),
   updateProfile: (data) => API.put('/api/auth/profile', data),
   changePassword: (data) => API.put('/api/auth/change-password', data),
   deactivateAccount: () => API.delete('/api/auth/deactivate'),
@@ -60,9 +61,18 @@ export const issueAPI = {
   getIssueById: (id) => API.get(`/api/issues/${id}`),
   
   // Create new issue
-  createIssue: (formData) => API.post('/api/issues', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  // If the caller passes a FormData instance (file uploads), send multipart/form-data.
+  // Otherwise send as JSON so the backend receives proper content-type for non-file submissions.
+  createIssue: (formData) => {
+    if (typeof FormData !== 'undefined' && formData instanceof FormData) {
+      return API.post('/api/issues', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    }
+
+    // Not FormData — send JSON body
+    return API.post('/api/issues', formData);
+  },
   
   // Update issue (admin only)
   updateIssue: (id, data) => API.put(`/api/issues/${id}`, data),
@@ -74,9 +84,11 @@ export const issueAPI = {
   voteOnIssue: (id, voteType) => API.post(`/api/issues/${id}/vote`, { voteType }),
   
   // Add comment to issue
-  addComment: (id, message) => API.post(`/api/issues/${id}/comment`, { message }),
+  // Expect the caller to pass an object, e.g. { text: '...' }
+  addComment: (id, commentData) => API.post(`/api/issues/${id}/comment`, commentData),
   
   // Get user's reported issues
+  // NOTE: server route is GET /api/issues/user/my-issues
   getMyIssues: (params = {}) => API.get('/api/issues/user/my-issues', { params }),
   
   // Get issue statistics
@@ -114,18 +126,11 @@ export const updateIssue = (id, data) => issueAPI.updateIssue(id, data);
 export const deleteIssue = (id) => issueAPI.deleteIssue(id);
 export const voteOnIssue = (id, voteType) => issueAPI.voteOnIssue(id, voteType);
 
-// Comment functions
-export const addComment = (issueId, commentData) => 
-  API.post(`/api/issues/${issueId}/comments`, commentData);
-
-export const getComments = (issueId) => 
-  API.get(`/api/issues/${issueId}/comments`);
-
-export const updateComment = (issueId, commentId, data) => 
-  API.put(`/api/issues/${issueId}/comments/${commentId}`, data);
-
-export const deleteComment = (issueId, commentId) => 
-  API.delete(`/api/issues/${issueId}/comments/${commentId}`);
+// Comment convenience functions (use the issueAPI implementation where available)
+export const addComment = (issueId, commentData) => issueAPI.addComment(issueId, commentData);
+export const getComments = (issueId) => API.get(`/api/issues/${issueId}/comments`);
+export const updateComment = (issueId, commentId, data) => API.put(`/api/issues/${issueId}/comments/${commentId}`, data);
+export const deleteComment = (issueId, commentId) => API.delete(`/api/issues/${issueId}/comments/${commentId}`);
 
 // Issue status management (Admin only)
 export const updateIssueStatus = (issueId, statusData) => 
@@ -145,6 +150,9 @@ export const getTrendingIssues = (params = {}) =>
 export const getAllUsers = (params) => userAPI.getAllUsers(params);
 export const getDashboardStats = () => userAPI.getDashboardStats();
 export const updateUserRole = (id, role) => userAPI.updateUserRole(id, role);
+
+// Convenience export to fetch the current user's reported issues
+export const getMyIssues = (params) => issueAPI.getMyIssues(params);
 
 // Location and mapping utilities
 export const reverseGeocode = (lat, lng) => 

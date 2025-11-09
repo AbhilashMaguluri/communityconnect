@@ -64,6 +64,13 @@ const Navbar = () => {
                     Profile
                   </NavDropdown.Item>
                 </LinkContainer>
+
+                <LinkContainer to="/my-issues">
+                  <NavDropdown.Item>
+                    <i className="fas fa-folder-open me-2"></i>
+                    My Reports
+                  </NavDropdown.Item>
+                </LinkContainer>
                 
                 {user?.role === 'admin' && (
                   <LinkContainer to="/admin">

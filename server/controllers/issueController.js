@@ -8,6 +8,18 @@ const fs = require('fs');
 // @route   POST /api/issues
 // @access  Private
 const createIssue = asyncHandler(async (req, res) => {
+  // Debugging: log incoming payload shape to help diagnose submission issues
+  // (This is intentionally lightweight and safe to leave temporarily)
+  try {
+    console.log('--- createIssue incoming ---');
+    console.log('req.headers.authorization:', !!req.headers?.authorization);
+    console.log('req.isAuthenticated (user set):', !!req.user);
+    console.log('req.body keys:', Object.keys(req.body || {}));
+    console.log('req.files count:', req.files ? req.files.length : 0);
+  } catch (logErr) {
+    console.warn('Error logging request in createIssue:', logErr.message);
+  }
+
   const {
     title,
     description,
@@ -18,6 +30,25 @@ const createIssue = asyncHandler(async (req, res) => {
     tags
   } = req.body;
 
+  // If location or address were sent as JSON strings (common when using FormData), parse them.
+  let parsedLocation = location;
+  let parsedAddress = address;
+
+  if (parsedLocation && typeof parsedLocation === 'string') {
+    try {
+      parsedLocation = JSON.parse(parsedLocation);
+    } catch (e) {
+      // ignore parse error; leave as string and let validation handle it
+    }
+  }
+
+  if (parsedAddress && typeof parsedAddress === 'string') {
+    try {
+      parsedAddress = JSON.parse(parsedAddress);
+    } catch (e) {
+      // ignore parse error
+    }
+  }
   // Process uploaded images
   const images = req.files ? req.files.map(file => ({
     filename: file.filename,
@@ -32,8 +63,8 @@ const createIssue = asyncHandler(async (req, res) => {
     description,
     category,
     priority: priority || 'medium',
-    location,
-    address,
+    location: parsedLocation || location,
+    address: parsedAddress || address,
     images,
     tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
     reportedBy: req.user._id

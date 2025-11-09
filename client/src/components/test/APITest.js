@@ -1,88 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Button, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
+import API from '../../services/api';
 
 const APITest = () => {
-  const [apiStatus, setApiStatus] = useState('testing');
-  const [issuesCount, setIssuesCount] = useState(0);
-  const [error, setError] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  
-  const testAPIConnection = React.useCallback(async () => {
+  const ping = async () => {
     try {
-      console.log('Testing API connection to:', API_URL);
-      // Use environment variable for API URL
-      const healthResponse = await axios.get(`${API_URL}/api/issues`);
-      console.log('API Response:', healthResponse.data);
-      if (healthResponse.data) {
-        // Support both array and nested issue collections
-        const payload = healthResponse.data;
-        const issuesArray = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload.data?.issues)
-            ? payload.data.issues
-            : Array.isArray(payload.data)
-              ? payload.data
-              : [];
-        setIssuesCount(issuesArray.length);
-        setApiStatus('connected');
-      }
-    } catch (err) {
-      console.error('API Test Failed:', err);
-      setError(`API Connection Failed: ${err.message}`);
-      setApiStatus('failed');
+      setLoading(true);
+      setError('');
+      const res = await API.get('/api/health');
+      setStatus(res.data);
+    } catch (e) {
+      setError(e?.response?.data?.message || e.message || 'Request failed');
+    } finally {
+      setLoading(false);
     }
-  }, [API_URL]);
+  };
 
   useEffect(() => {
-    testAPIConnection();
-  }, [testAPIConnection]);
+    ping();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="container mt-5">
+    <div className="container py-4">
       <Card>
         <Card.Header>
-          <h3>🔧 Community Connect API Test</h3>
+          <strong>API Test</strong>
         </Card.Header>
         <Card.Body>
-          <div className="mb-3">
-            <strong>API Status: </strong>
-            {apiStatus === 'testing' && (
-              <span className="text-warning">
-                <Spinner animation="border" size="sm" className="me-2" />
-                Testing...
-              </span>
-            )}
-            {apiStatus === 'connected' && (
-              <span className="text-success">✅ Connected</span>
-            )}
-            {apiStatus === 'failed' && (
-              <span className="text-danger">❌ Failed</span>
-            )}
-          </div>
-
-          {apiStatus === 'connected' && (
-            <Alert variant="success">
-              <h5>🎉 Success!</h5>
-              <p>Found <strong>{issuesCount}</strong> issues in the database.</p>
-            </Alert>
-          )}
-
-          {error && (
-            <Alert variant="danger">
-              <h5>⚠️ Error Details:</h5>
-              <pre>{error}</pre>
-            </Alert>
-          )}
-
-          <Button 
-            variant="primary" 
-            onClick={testAPIConnection}
-            disabled={apiStatus === 'testing'}
-          >
-            {apiStatus === 'testing' ? 'Testing...' : 'Test Again'}
+          {loading && <Spinner animation="border" size="sm" className="me-2" />}
+          <Button variant="primary" onClick={ping} disabled={loading} className="mb-3">
+            Ping /api/health
           </Button>
+          {error && <Alert variant="danger">{error}</Alert>}
+          {status && (
+            <Alert variant="success">
+              <div><strong>Message:</strong> {status.message}</div>
+              <div><strong>Environment:</strong> {status.environment}</div>
+              <div><strong>Timestamp:</strong> {status.timestamp}</div>
+            </Alert>
+          )}
         </Card.Body>
       </Card>
     </div>

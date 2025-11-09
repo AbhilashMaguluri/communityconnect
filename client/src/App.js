@@ -15,6 +15,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ReportIssue from './pages/ReportIssue';
+import MyIssues from './pages/MyIssues';
 import IssueList from './pages/IssueList';
 import IssueDetail from './pages/IssueDetail';
 import Profile from './pages/Profile';
@@ -49,6 +50,12 @@ function App() {
               <Route path="/report-issue" element={
                 <PrivateRoute>
                   <ReportIssue />
+                </PrivateRoute>
+              } />
+
+              <Route path="/my-issues" element={
+                <PrivateRoute>
+                  <MyIssues />
                 </PrivateRoute>
               } />
               

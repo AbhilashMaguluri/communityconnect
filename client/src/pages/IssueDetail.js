@@ -42,7 +42,11 @@ const IssueDetail = () => {
     try {
       setLoading(true);
       const response = await getIssue(id);
-      setIssue(response.data.issue);
+      // Server sometimes returns { success: true, data: issue } or { success: true, issue }
+      // Be defensive: accept either shape and also fallback to the whole body
+      const body = response?.data;
+      const issuePayload = body?.data || body?.issue || body || null;
+      setIssue(issuePayload);
     } catch (error) {
       setError('Failed to load issue details. Please try again.');
       console.error('Error fetching issue:', error);
