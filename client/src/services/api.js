@@ -2,7 +2,10 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Create axios instance with base URL
-const API = axios.create({ baseURL: baseURL: process.env.REACT_APP_API_URL, });
+
+const API = axios.create({
+  baseURL: process.env.REACT_APP_API_URL,
+});
 
 
 
