@@ -2,7 +2,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Create axios instance with base URL
-const API = axios.create({ baseURL: "http://localhost:5000" });
+const API = axios.create({ baseURL: baseURL: process.env.REACT_APP_API_URL, });
 
 
 
